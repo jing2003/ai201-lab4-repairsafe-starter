@@ -31,4 +31,39 @@ def log_interaction(question: str, tier: str, response: str) -> None:
 
     Design your log entry in specs/auditor-spec.md before implementing here.
     """
-    pass
+    # Ensure logs directory exists
+    log_dir = os.path.dirname(LOG_FILE)
+    if log_dir and not os.path.exists(log_dir):
+      try:
+        os.makedirs(log_dir, exist_ok=True)
+      except Exception:
+        # Best-effort: if we can't create directory, skip logging to file but still print
+        print(f"[LOG ERROR] could not create log directory: {log_dir}")
+
+    # Prepare record fields
+    timestamp = datetime.utcnow().isoformat() + "Z"
+    truncated_question = (question[:300]) if question is not None else ""
+    response_preview = (response[:200]) if response is not None else ""
+
+    record = {
+      "timestamp": timestamp,
+      "tier": tier,
+      "question": truncated_question,
+      "response_preview": response_preview,
+    }
+
+    # Append JSON line to log file
+    try:
+      with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception:
+      print(f"[LOG ERROR] could not write to log file: {LOG_FILE}")
+
+    # Print one-line summary to terminal
+    try:
+      resp_len = len(response) if response is not None else 0
+      display_q = truncated_question.replace('\n', ' ')[:80]
+      print(f"[LOGGED] tier={tier} | \"{display_q}\" → {resp_len} chars")
+    except Exception:
+      # Silently ignore printing errors
+      pass
